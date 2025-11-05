@@ -11,7 +11,7 @@ import {
   TrendingUp,
   Star
 } from 'lucide-react';
-import { useApp } from '../../contexts/AppContext';
+import { useRecommendations } from '../../contexts/RecommendationContext';
 import { useAuth } from '../../contexts/AuthContext';
 import { MenuBrowser } from './MenuBrowser';
 import { Cart } from './Cart';
@@ -21,13 +21,13 @@ type TabType = 'profile' | 'menu' | 'cart' | 'orders' ;
 
 export const StudentDashboard: React.FC = () => {
   const { user } = useAuth();
+  const { getProfileRecommendations } = useRecommendations();
   const { 
     orders, 
     notifications, 
     cartItems, 
     menuItems,
-    reviews,
-    getRecommendedItems 
+    reviews
   } = useApp();
 
   const [activeTab, setActiveTab] = useState<TabType>('profile');
@@ -42,7 +42,7 @@ export const StudentDashboard: React.FC = () => {
   const cartItemCount = cartItems.reduce((total, item) => total + item.quantity, 0);
   const totalSpent = completedOrders.reduce((total, order) => total + order.totalAmount, 0);
   const favoriteItems = menuItems.filter(item => item.averageRating >= 4.5).slice(0, 3);
-  const recommended = getRecommendedItems(6);
+  const recommended = getProfileRecommendations();
 
   const tabs = [
     

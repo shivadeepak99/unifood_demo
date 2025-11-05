@@ -2,6 +2,7 @@ import React from 'react';
 import { Toaster } from 'react-hot-toast';
 import { AuthProvider, useAuth } from './contexts/AuthContext';
 import { AppProvider } from './contexts/AppContext';
+import { RecommendationProvider } from './contexts/RecommendationContext';
 import { AuthWrapper } from './components/auth/AuthWrapper';
 import { UpdatePassword } from './components/auth/UpdatePassword';
 import { Header } from './components/common/Header';
@@ -66,9 +67,10 @@ function App() {
     <Router>
       <AuthProvider>
         <AppProvider>
-          <Toaster 
-            position="top-right"
-            toastOptions={{
+          <RecommendationProvider>
+            <Toaster
+              position="top-right"
+              toastOptions={{
               duration: 4000,
               style: {
                 background: '#363636',
@@ -95,6 +97,7 @@ function App() {
             <Route path="/auth" element={<AuthWrapper />} />
             <Route path="/reset-password" element={<UpdatePassword />} />
           </Routes>
+          </RecommendationProvider>
         </AppProvider>
       </AuthProvider>
     </Router>
