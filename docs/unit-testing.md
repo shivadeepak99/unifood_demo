@@ -230,7 +230,7 @@ describe('Login Component', () => {
 
 ### Output
 
-![Login Test Output](testing%20ss/Screenshot%202025-11-08%20151639.png)
+![Login Test Output](../testing%20ss/Screenshot%202025-11-08%20151639.png)
 
 
 ## Header Component Tests
