@@ -1128,7 +1128,7 @@ describe('RecommendationContext', () => {
 
 ### Output
 
-![RecommendationContext Test Output](placeholder_recommendationcontext_test_output.png)
+![RecommendationContext Test Output](../testing%20ss/Screenshot%202025-11-08%20152003.png)
 
 ## Email Utilities Tests
 
