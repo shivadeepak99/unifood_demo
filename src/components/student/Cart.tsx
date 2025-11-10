@@ -8,15 +8,19 @@ import {
   CreditCard,
   CheckCircle,
   X,
-  Loader2
+  Loader2,
+  AlertTriangle
 } from 'lucide-react';
 import { useApp } from '../../contexts/AppContext';
 import { useAuth } from '../../contexts/AuthContext';
+import { useRecommendations } from '../../contexts/RecommendationContext';
 import { paymentMethods, processPayment, generatePaymentReceipt, PaymentMethod } from '../../lib/payments';
 import toast from 'react-hot-toast';
+import { MenuItem } from '../../types';
 
 export const Cart: React.FC = () => {
   const { user } = useAuth();
+  const { getCartRecommendations, checkAllergen } = useRecommendations();
   const {
     cartItems,
     updateCartQuantity,
@@ -35,6 +39,17 @@ export const Cart: React.FC = () => {
   const [selectedPaymentMethod, setSelectedPaymentMethod] = useState<PaymentMethod | null>(null);
   const [isProcessingPayment, setIsProcessingPayment] = useState(false);
   const [paymentStep, setPaymentStep] = useState<'details' | 'payment' | 'processing'>('details');
+
+  const handleAddToCart = (item: MenuItem, quantity: number) => {
+    const isAddingFirstTime = cartItems.find(i => i.id === item.id) === undefined;
+    if (isAddingFirstTime) {
+      checkAllergen(item, () => {
+        updateCartQuantity(item.id, quantity);
+      });
+    } else {
+      updateCartQuantity(item.id, quantity);
+    }
+  };
 
   const handleCheckout = async () => {
     if (!selectedTimeSlot) {
@@ -182,14 +197,14 @@ export const Cart: React.FC = () => {
                     <div className="flex items-center justify-between mt-4">
                       <div className="flex items-center space-x-3">
                         <button
-                          onClick={() => updateCartQuantity(item.id, item.quantity - 1)}
+                          onClick={() => handleAddToCart(item, item.quantity - 1)}
                           className="w-8 h-8 rounded-full border border-gray-300 flex items-center justify-center hover:bg-gray-50"
                         >
                           <Minus className="w-4 h-4" />
                         </button>
                         <span className="text-lg font-medium">{item.quantity}</span>
                         <button
-                          onClick={() => updateCartQuantity(item.id, item.quantity + 1)}
+                          onClick={() => handleAddToCart(item, item.quantity + 1)}
                           className="w-8 h-8 rounded-full border border-gray-300 flex items-center justify-center hover:bg-gray-50"
                         >
                           <Plus className="w-4 h-4" />
@@ -253,6 +268,27 @@ export const Cart: React.FC = () => {
             </div>
           </div>
         </div>
+
+        {/* Recommendations */}
+        <div className="mt-8">
+          <h2 className="text-2xl font-bold text-gray-900 mb-4">Customers also like</h2>
+          <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
+            {getCartRecommendations(cartItems).map(item => (
+              <div key={item.id} className="bg-white rounded-lg shadow-sm border p-4">
+                <img src={item.image} alt={item.name} className="w-full h-32 object-cover rounded-lg mb-4" />
+                <h3 className="font-semibold text-gray-900">{item.name}</h3>
+                <p className="text-gray-600 text-sm">₹{item.price}</p>
+                <button
+                  onClick={() => handleAddToCart(item, 1)}
+                  className="w-full mt-4 bg-blue-600 text-white py-2 px-4 rounded-lg hover:bg-blue-700 transition-colors"
+                >
+                  Add to Cart
+                </button>
+              </div>
+            ))}
+          </div>
+        </div>
+
 
         {/* Checkout Modal */}
         {showCheckout && (

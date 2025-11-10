@@ -1,9 +1,10 @@
 import React, { useState } from 'react';
-import { 
-  Home, 
-  Search, 
-  ShoppingCart, 
-  Clock, 
+import { MenuBrowser } from './MenuBrowser';
+import {
+  Home,
+  Search,
+  ShoppingCart,
+  Clock,
   Bell,
   Heart,
   User,
@@ -11,9 +12,12 @@ import {
   TrendingUp,
   Star
 } from 'lucide-react';
+import { X } from 'lucide-react';
+import { useRecommendations } from '../../contexts/RecommendationContext';
 import { useApp } from '../../contexts/AppContext';
 import { useAuth } from '../../contexts/AuthContext';
-import { MenuBrowser } from './MenuBrowser';
+import { AlertTriangle } from 'lucide-react';
+import { MenuItem } from '../../types';
 import { Cart } from './Cart';
 import { OrderTracking } from './OrderTracking';
 
@@ -21,19 +25,22 @@ type TabType = 'profile' | 'menu' | 'cart' | 'orders' ;
 
 export const StudentDashboard: React.FC = () => {
   const { user } = useAuth();
-  const { 
-    orders, 
-    notifications, 
-    cartItems, 
+  const { getProfileRecommendations, allergenAlert, setAllergenAlert } = useRecommendations();
+  const {
+    orders,
+    notifications,
+    cartItems,
     menuItems,
     reviews,
-    getRecommendedItems 
+    addToCart
   } = useApp();
+  const [selectedRecItem, setSelectedRecItem] = useState<MenuItem | null>(null);
+  const [adding, setAdding] = useState(false);
 
   const [activeTab, setActiveTab] = useState<TabType>('profile');
 
   const userOrders = orders.filter(order => order.userId === user?.id);
-  const activeOrders = userOrders.filter(order => 
+  const activeOrders = userOrders.filter(order =>
     ['ordered', 'preparing', 'ready'].includes(order.status)
   );
   const completedOrders = userOrders.filter(order => order.status === 'served');
@@ -42,15 +49,83 @@ export const StudentDashboard: React.FC = () => {
   const cartItemCount = cartItems.reduce((total, item) => total + item.quantity, 0);
   const totalSpent = completedOrders.reduce((total, order) => total + order.totalAmount, 0);
   const favoriteItems = menuItems.filter(item => item.averageRating >= 4.5).slice(0, 3);
-  const recommended = getRecommendedItems(6);
+  const recommended = getProfileRecommendations().slice(0, 6); // Limit to 6 items
 
+  // Bottom navigation tabs (was missing and caused runtime error)
   const tabs = [
-    
-    { id: 'profile', label: 'Profile', icon: User, count: 0 },
+    { id: 'profile', label: 'Home', icon: Home, count: 0 },
     { id: 'menu', label: 'Menu', icon: Search, count: 0 },
     { id: 'cart', label: 'Cart', icon: ShoppingCart, count: cartItemCount },
-    { id: 'orders', label: 'Orders', icon: Clock, count: activeOrders.length }
+    { id: 'orders', label: 'Orders', icon: Clock, count: activeOrders.length },
   ];
+
+  // check for allergens before adding / showing an item in menu.
+  // Signature matches MenuBrowser: (item, onProceed) => void
+  const checkAllergen = (item: MenuItem, onProceed: () => void) => {
+    const userAllergens = (user?.allergens ?? []).map(a => String(a).toLowerCase());
+    const itemAllergens = (item.allergens ?? []).map(a => String(a).toLowerCase());
+    const hasAllergen = userAllergens.some(ua => itemAllergens.includes(ua));
+
+    if (hasAllergen) {
+      // Show confirmation modal via RecommendationContext state
+      setAllergenAlert({
+        item,
+        proceed: () => {
+          try { onProceed(); } finally { setAllergenAlert(null); }
+        },
+        cancel: () => setAllergenAlert(null)
+      } as any);
+      return true;
+    }
+
+    // no allergen — proceed immediately
+    onProceed();
+    return false;
+  };
+
+  // Render menu in the 'menu' tab (minimal; expand as needed)
+  const renderContent = () => {
+    switch (activeTab) {
+      case 'menu':
+        return <MenuBrowser checkAllergen={checkAllergen} />;
+      case 'cart':
+        return <Cart />;
+      case 'orders':
+        return <OrderTracking />;
+      default:
+        return renderDashboardOverview();
+    }
+  };
+
+  // Small allergen confirmation modal (simple inline UI)
+  const renderAllergenModal = () => {
+    if (!allergenAlert) return null;
+    return (
+      <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/40">
+        <div className="bg-white rounded-lg p-6 w-full max-w-md">
+          <h3 className="text-lg font-semibold mb-2">Allergen warning</h3>
+          <p className="text-sm text-gray-700 mb-4">
+            The item <strong>{allergenAlert.item?.name}</strong> contains allergens you marked.
+            Do you want to add it anyway?
+          </p>
+          <div className="flex justify-end gap-3">
+            <button
+              onClick={() => { allergenAlert.cancel?.(); }}
+              className="px-4 py-2 rounded border"
+            >
+              Cancel
+            </button>
+            <button
+              onClick={() => { allergenAlert.proceed?.(); }}
+              className="px-4 py-2 rounded bg-blue-600 text-white"
+            >
+              Add anyway
+            </button>
+          </div>
+        </div>
+      </div>
+    );
+  };
 
   const renderDashboardOverview = () => (
     <div className="min-h-screen bg-gray-50 py-8 mb-16">
@@ -81,7 +156,12 @@ export const StudentDashboard: React.FC = () => {
             </div>
             <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
               {recommended.map(item => (
-                <div key={item.id} className="flex items-center space-x-3">
+                <button
+                  key={item.id}
+                  type="button"
+                  onClick={() => checkAllergen(item, () => setSelectedRecItem(item))}
+                  className="flex items-center space-x-3 text-left hover:bg-gray-50 p-2 rounded-md"
+                >
                   <img src={item.image} alt={item.name} className="w-16 h-16 object-cover rounded-lg" />
                   <div className="flex-1">
                     <p className="font-medium text-gray-900 text-sm">{item.name}</p>
@@ -91,7 +171,7 @@ export const StudentDashboard: React.FC = () => {
                       <span>{item.cuisine}</span>
                     </div>
                   </div>
-                </div>
+                </button>
               ))}
             </div>
           </div>
@@ -215,7 +295,12 @@ export const StudentDashboard: React.FC = () => {
               <h3 className="text-lg font-semibold text-gray-900 mb-4">Popular Items</h3>
               <div className="space-y-3">
                 {favoriteItems.map(item => (
-                  <div key={item.id} className="flex items-center space-x-3">
+                  <button
+                    key={item.id}
+                    type="button"
+                    onClick={() => checkAllergen(item, () => setSelectedRecItem(item))}
+                    className="w-full flex items-center space-x-3 text-left hover:bg-gray-50 p-2 rounded-md"
+                  >
                     <img
                       src={item.image}
                       alt={item.name}
@@ -229,7 +314,7 @@ export const StudentDashboard: React.FC = () => {
                       </div>
                     </div>
                     <span className="text-sm font-semibold text-blue-600">₹{item.price}</span>
-                  </div>
+                  </button>
                 ))}
               </div>
             </div>
@@ -239,21 +324,6 @@ export const StudentDashboard: React.FC = () => {
     </div>
   );
 
-  const renderContent = () => {
-    switch (activeTab) {
-      case 'profile':
-        return renderDashboardOverview();
-      case 'menu':
-        return <MenuBrowser />;
-      case 'cart':
-        return <Cart />;
-      case 'orders':
-        return <OrderTracking />;
-      default:
-        return renderDashboardOverview();
-    }
-  };
-
   return (
     <div className="flex flex-col min-h-screen bg-gray-50">
       {/* Main Content */}
@@ -262,6 +332,7 @@ export const StudentDashboard: React.FC = () => {
           <div className="py-8">
             <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
               {renderContent()}
+              {renderAllergenModal()}
             </div>
           </div>
         )}
@@ -294,6 +365,57 @@ export const StudentDashboard: React.FC = () => {
         </div>
       </div>
 
+      {/* Recommended item detail modal */}
+      {selectedRecItem && (
+        <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/40">
+          <div className="bg-white rounded-lg p-6 w-full max-w-lg mx-4">
+            <div className="flex items-start justify-between mb-4">
+              <h3 className="text-lg font-semibold">{selectedRecItem.name}</h3>
+              <button onClick={() => setSelectedRecItem(null)} className="text-gray-500 hover:text-gray-700">
+                <X className="w-5 h-5" />
+              </button>
+            </div>
+            {selectedRecItem.image && (
+              <img src={selectedRecItem.image} alt={selectedRecItem.name} className="w-full h-44 object-cover rounded-lg mb-4" />
+            )}
+            <p className="text-sm text-gray-700 mb-3">{selectedRecItem.description}</p>
+            <div className="flex items-center justify-between mb-4">
+              <div className="text-sm text-gray-600">
+                <div>Price: <span className="font-medium">₹{selectedRecItem.price}</span></div>
+                {selectedRecItem.allergens && selectedRecItem.allergens.length > 0 && (
+                  <div className="mt-1 text-xs">Allergens: {selectedRecItem.allergens.join(', ')}</div>
+                )}
+              </div>
+              <div className="text-sm text-gray-500">
+                {selectedRecItem.cuisine}
+              </div>
+            </div>
+            <div className="flex justify-end gap-3">
+              <button
+                onClick={() => setSelectedRecItem(null)}
+                className="px-4 py-2 rounded border"
+              >
+                Cancel
+              </button>
+              <button
+                onClick={async () => {
+                  setAdding(true);
+                  try {
+                    addToCart(selectedRecItem);
+                    setSelectedRecItem(null);
+                  } finally {
+                    setAdding(false);
+                  }
+                }}
+                className="px-4 py-2 rounded bg-blue-600 text-white disabled:opacity-60"
+                disabled={adding}
+              >
+                {adding ? 'Adding…' : 'Add to cart'}
+              </button>
+            </div>
+          </div>
+        </div>
+      )}
     </div>
   );
 };
