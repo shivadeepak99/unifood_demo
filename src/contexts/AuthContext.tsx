@@ -280,14 +280,18 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
 
   const resetPassword = async (email: string): Promise<boolean> => {
     try {
-      // 🔥 DEVELOPMENT MODE: Log reset link to console instead of sending email
-      const DEMO_MODE = false; // Set to true for console logging only
+      // 🌐 PRODUCTION MODE: Send actual password reset email via Supabase
+      // Supabase will send an email with a secure reset link
+      // User clicks link → redirected to /reset-password with token in URL
+      
+      // 🔥 Set to false for production, true for local testing only
+      const DEMO_MODE = false; // ⚠️ CHANGE THIS TO false IN PRODUCTION
       
       if (DEMO_MODE) {
-        // Store email in localStorage for the UpdatePassword component to use
+        // 🎯 DEMO MODE: Log reset link to console for local testing
+        // Useful when email service is not configured yet
         localStorage.setItem('demo_reset_email', email);
         
-        // Generate a mock reset token for development
         const mockToken = `demo_reset_token_${Date.now()}_${Math.random().toString(36).substr(2, 9)}`;
         const resetLink = `${window.location.origin}/reset-password?token=${mockToken}&type=recovery&email=${encodeURIComponent(email)}`;
         
@@ -304,29 +308,40 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
         return true;
       }
 
-      // 🌐 PRODUCTION MODE: Send actual email via Supabase
+      // 🌐 PRODUCTION MODE: Use Supabase to send actual reset email
       const { error } = await supabase.auth.resetPasswordForEmail(email, {
         redirectTo: `${window.location.origin}/reset-password`
       });
 
       if (error) {
-        // Check if it's a rate limit error
+        // Handle specific Supabase errors
         if (error.message.includes('429') || error.message.toLowerCase().includes('rate limit')) {
           toast.error('Too many requests. Please wait a few minutes and try again.');
           console.log('⚠️ Supabase Rate Limit: Wait 60 seconds before trying again');
+        } else if (error.message.toLowerCase().includes('user not found')) {
+          // Security: Don't reveal if email exists or not
+          toast.success('If this email is registered, you will receive a password reset link.');
+          console.log('ℹ️ Password reset requested for non-existent email:', email);
+          return true; // Return success to prevent email enumeration
         } else {
           toast.error(error.message);
         }
         return false;
       }
       
-      console.log('✅ Password reset email sent successfully!');
+      console.log('✅ Password reset email sent successfully via Supabase!');
       console.log('📧 Check your email inbox for the reset link');
-      toast.success('Password reset email sent! Check your inbox.');
+      console.log('⏰ Link expires in 1 hour');
+      
+      toast.success(
+        'Password reset email sent! Check your inbox and follow the link to reset your password.',
+        { duration: 5000 }
+      );
+      
       return true;
     } catch (error) {
       console.error('Password reset error:', error);
-      toast.error('Failed to send password reset email');
+      toast.error('Failed to send password reset email. Please try again.');
       return false;
     }
   };

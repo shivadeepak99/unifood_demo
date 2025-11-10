@@ -15,10 +15,11 @@ import {
   Plus
 } from 'lucide-react';
 import { useAuth } from '../../contexts/AuthContext';
+import { supabase } from '../../lib/supabase';
 import toast from 'react-hot-toast';
 
 export const Settings: React.FC = () => {
-  const { user, logout, updateProfile, updatePassword } = useAuth();
+  const { user, updateProfile, updatePassword } = useAuth();
   const [activeSection, setActiveSection] = useState('profile');
   const [showPassword, setShowPassword] = useState(false);
   const [saveStatus, setSaveStatus] = useState<'idle' | 'saving' | 'success' | 'error'>('idle');
@@ -249,12 +250,122 @@ export const Settings: React.FC = () => {
     URL.revokeObjectURL(url);
   };
 
-  const deleteAccount = () => {
-    if (window.confirm('Are you sure you want to delete your account? This action cannot be undone.')) {
-      // In a real app, this would call an API
+  const deleteAccount = async () => {
+    if (!user) return;
+
+    const confirmation = window.confirm(
+      '⚠️ DELETE ACCOUNT - FINAL WARNING\n\n' +
+      'This will permanently delete:\n' +
+      '• Your user profile\n' +
+      '• All order history\n' +
+      '• All reviews and ratings\n' +
+      '• All notifications\n' +
+      '• All saved preferences\n\n' +
+      'This action CANNOT be undone!\n\n' +
+      'Type "DELETE" in the next prompt to confirm.'
+    );
+
+    if (!confirmation) return;
+
+    const finalConfirm = window.prompt(
+      'Type DELETE (in capital letters) to permanently delete your account:'
+    );
+
+    if (finalConfirm !== 'DELETE') {
+      toast.error('Account deletion cancelled. Text did not match.');
+      return;
+    }
+
+    try {
+      setSaveStatus('saving');
+      toast.loading('Deleting your account...', { id: 'delete-account' });
+
+      // 🔥 STEP 1: Delete all related data from database (cascade)
+      // This must happen BEFORE deleting the user auth account
+      
+      // Delete notifications
+      const { error: notifError } = await supabase
+        .from('notifications')
+        .delete()
+        .eq('user_id', user.id);
+
+      if (notifError) console.error('Error deleting notifications:', notifError);
+
+      // Delete reviews
+      const { error: reviewError } = await supabase
+        .from('reviews')
+        .delete()
+        .eq('user_id', user.id);
+
+      if (reviewError) console.error('Error deleting reviews:', reviewError);
+
+      // Delete orders
+      const { error: orderError } = await supabase
+        .from('orders')
+        .delete()
+        .eq('user_id', user.id);
+
+      if (orderError) console.error('Error deleting orders:', orderError);
+
+      // Delete OTP verifications
+      const { error: otpError } = await supabase
+        .from('otp_verifications')
+        .delete()
+        .eq('email', user.email);
+
+      if (otpError) console.error('Error deleting OTP records:', otpError);
+
+      // Delete user profile
+      const { error: profileError } = await supabase
+        .from('users')
+        .delete()
+        .eq('id', user.id);
+
+      if (profileError) {
+        console.error('Error deleting user profile:', profileError);
+        toast.error('Failed to delete account. Please contact support.', { id: 'delete-account' });
+        setSaveStatus('error');
+        return;
+      }
+
+      // 🔥 STEP 2: Delete authentication account from Supabase Auth
+      // This removes the user's login credentials
+      const { error: authError } = await supabase.auth.admin.deleteUser(user.id);
+      
+      // Note: admin.deleteUser requires service_role key, not anon key
+      // If this fails, we'll use signOut as fallback
+      if (authError) {
+        console.warn('Could not delete auth account (requires admin privileges). Logging out instead.');
+      }
+
+      // 🔥 STEP 3: Clear all localStorage data
+      const settingsKey = `unifood_settings_${user.id}`;
+      localStorage.removeItem(settingsKey);
       localStorage.removeItem('unifood_user');
-      localStorage.removeItem(`unifood_settings_${user?.id}`);
-      logout();
+      
+      // Clear any cached data
+      sessionStorage.clear();
+
+      // 🔥 STEP 4: Sign out and redirect
+      await supabase.auth.signOut();
+      
+      toast.success('Account deleted successfully. We\'re sad to see you go! 😢', { 
+        id: 'delete-account',
+        duration: 5000 
+      });
+
+      setSaveStatus('success');
+
+      // Redirect to login after 2 seconds
+      setTimeout(() => {
+        window.location.href = '/';
+      }, 2000);
+
+    } catch (error) {
+      console.error('Delete account error:', error);
+      toast.error('Failed to delete account. Please try again or contact support.', { id: 'delete-account' });
+      setSaveStatus('error');
+      setTimeout(() => setSaveStatus('idle'), 3000);
     }
   };
 

@@ -1,0 +1,11 @@
+What is the overall architecture and structure of the codebase, including its components, dependencies, and key technologies used, and how do they interact with each other to form the overall system?
+
+
+We are currently using a static one-time password (OTP) verification system and would like to transition to a dynamic OTP system, where the verification code is generated and sent to the user in real-time, providing an additional layer of security.
+
+
+What steps are required to transition the Forgot Password feature from a localhost environment to a production-ready deployment, ensuring seamless functionality and security?
+
+Update menu item images to reflect current offerings, ensure increment and decrement functionality prevents quantity values from going below 0, and fully implement the Delete Account feature to allow users to successfully remove their accounts.
+
+

@@ -10,12 +10,13 @@ import {
   ShoppingCart
 } from 'lucide-react';
 import { useApp } from '../../contexts/AppContext';
-import { MenuItem } from '../../types';
 
 export const MenuBrowser: React.FC = () => {
   const { 
     menuItems, 
-    addToCart, 
+    addToCart,
+    removeFromCart,
+    updateCartQuantity,
     searchTerm, 
     setSearchTerm,
     selectedCategory,
@@ -250,10 +251,16 @@ export const MenuBrowser: React.FC = () => {
                     <button
                       aria-label="Decrease quantity"
                       onClick={() => {
-                        const newQty = cartQuantities[item.id] - 1;
-                        addToCart({ ...item, quantity: newQty });
+                        const currentQty = cartQuantities[item.id];
+                        if (currentQty > 1) {
+                          // Decrease quantity by 1
+                          updateCartQuantity(item.id, currentQty - 1);
+                        } else {
+                          // Remove from cart if quantity becomes 0
+                          removeFromCart(item.id);
+                        }
                       }}
-                      className="w-8 h-8 flex items-center justify-center rounded-full bg-white border border-gray-300 text-blue-600 hover:bg-blue-50 transition"
+                      className="w-8 h-8 flex items-center justify-center rounded-full bg-white border border-gray-300 text-blue-600 hover:bg-blue-50 transition disabled:opacity-50 disabled:cursor-not-allowed"
                       disabled={cartQuantities[item.id] === 0}
                     >
                       <span className="text-xl font-bold">−</span>
@@ -263,10 +270,7 @@ export const MenuBrowser: React.FC = () => {
                     </span>
                     <button
                       aria-label="Increase quantity"
-                      onClick={() => {
-                        const newQty = cartQuantities[item.id] + 1;
-                        addToCart({ ...item, quantity: newQty });
-                      }}
+                      onClick={() => addToCart(item)}
                       className="w-8 h-8 flex items-center justify-center rounded-full bg-white border border-gray-300 text-blue-600 hover:bg-blue-50 transition"
                     >
                       <span className="text-xl font-bold">+</span>
@@ -274,7 +278,7 @@ export const MenuBrowser: React.FC = () => {
                   </div>
                 ) : (
                   <button
-                    onClick={() => addToCart({ ...item, quantity: 1 })}
+                    onClick={() => addToCart(item)}
                     className="w-full bg-blue-600 text-white py-2 px-4 rounded-lg hover:bg-blue-700 focus:ring-2 focus:ring-blue-500 focus:ring-offset-2 transition-colors flex items-center justify-center space-x-2"
                   >
                     <ShoppingCart className="w-4 h-4" />
