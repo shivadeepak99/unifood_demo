@@ -10,17 +10,8 @@ import {
   ShoppingCart
 } from 'lucide-react';
 import { useApp } from '../../contexts/AppContext';
-<<<<<<< HEAD
-=======
-import { useRecommendations } from '../../contexts/RecommendationContext';
-import { MenuItem } from '../../types';
->>>>>>> 7bb40e57c6b314acdfc788b87c8af07e97d3245b
 
-interface MenuBrowserProps {
-  checkAllergen: (item: MenuItem, onProceed: () => void) => void;
-}
-
-export const MenuBrowser: React.FC<MenuBrowserProps> = ({ checkAllergen }) => {
+export const MenuBrowser: React.FC = () => {
   const { 
     menuItems, 
     addToCart,
@@ -30,8 +21,7 @@ export const MenuBrowser: React.FC<MenuBrowserProps> = ({ checkAllergen }) => {
     setSearchTerm,
     selectedCategory,
     setSelectedCategory,
-    cartQuantities // <-- Use context for persistent quantities
-    , updateCartQuantity
+    cartQuantities
   } = useApp();
 
   const [priceRange, setPriceRange] = useState({ min: 0, max: 500 });
@@ -261,7 +251,6 @@ export const MenuBrowser: React.FC<MenuBrowserProps> = ({ checkAllergen }) => {
                     <button
                       aria-label="Decrease quantity"
                       onClick={() => {
-<<<<<<< HEAD
                         const currentQty = cartQuantities[item.id];
                         if (currentQty > 1) {
                           // Decrease quantity by 1
@@ -270,10 +259,6 @@ export const MenuBrowser: React.FC<MenuBrowserProps> = ({ checkAllergen }) => {
                           // Remove from cart if quantity becomes 0
                           removeFromCart(item.id);
                         }
-=======
-                        const newQty = cartQuantities[item.id] - 1;
-                        updateCartQuantity(item.id, newQty);
->>>>>>> 7bb40e57c6b314acdfc788b87c8af07e97d3245b
                       }}
                       className="w-8 h-8 flex items-center justify-center rounded-full bg-white border border-gray-300 text-blue-600 hover:bg-blue-50 transition disabled:opacity-50 disabled:cursor-not-allowed"
                       disabled={cartQuantities[item.id] === 0}
@@ -285,14 +270,7 @@ export const MenuBrowser: React.FC<MenuBrowserProps> = ({ checkAllergen }) => {
                     </span>
                     <button
                       aria-label="Increase quantity"
-<<<<<<< HEAD
                       onClick={() => addToCart(item)}
-=======
-                      onClick={() => {
-                        const newQty = cartQuantities[item.id] + 1;
-                        updateCartQuantity(item.id, newQty);
-                      }}
->>>>>>> 7bb40e57c6b314acdfc788b87c8af07e97d3245b
                       className="w-8 h-8 flex items-center justify-center rounded-full bg-white border border-gray-300 text-blue-600 hover:bg-blue-50 transition"
                     >
                       <span className="text-xl font-bold">+</span>
@@ -300,11 +278,7 @@ export const MenuBrowser: React.FC<MenuBrowserProps> = ({ checkAllergen }) => {
                   </div>
                 ) : (
                   <button
-<<<<<<< HEAD
                     onClick={() => addToCart(item)}
-=======
-                    onClick={() => checkAllergen(item, () => addToCart({ ...item, quantity: 1 } as CartItem))}
->>>>>>> 7bb40e57c6b314acdfc788b87c8af07e97d3245b
                     className="w-full bg-blue-600 text-white py-2 px-4 rounded-lg hover:bg-blue-700 focus:ring-2 focus:ring-blue-500 focus:ring-offset-2 transition-colors flex items-center justify-center space-x-2"
                   >
                     <ShoppingCart className="w-4 h-4" />

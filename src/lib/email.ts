@@ -4,17 +4,6 @@ import { supabase } from './supabase'
 // Set to 'demo', 'nodemailer', or 'resend'
 const EMAIL_PROVIDER = (import.meta.env.VITE_EMAIL_PROVIDER || 'demo') as 'demo' | 'nodemailer' | 'resend';
 
-// ✨ Nodemailer configuration (for SMTP services like Gmail, Outlook, etc.)
-const SMTP_CONFIG = {
-  host: import.meta.env.VITE_SMTP_HOST || 'smtp.gmail.com',
-  port: parseInt(import.meta.env.VITE_SMTP_PORT || '587'),
-  secure: import.meta.env.VITE_SMTP_SECURE === 'true', // true for 465, false for other ports
-  auth: {
-    user: import.meta.env.VITE_SMTP_USER || '',
-    pass: import.meta.env.VITE_SMTP_PASS || ''
-  }
-};
-
 // 💌 Resend API configuration (modern email service)
 const RESEND_API_KEY = import.meta.env.VITE_RESEND_API_KEY || '';
 
@@ -74,33 +63,37 @@ export const sendOTPEmail = async (email: string, otp: string): Promise<boolean>
 
 /**
  * Send email via Nodemailer (SMTP)
- * Works with Gmail, Outlook, custom SMTP servers
+ * Uses backend server running on port 3001
+ * 🚀 PRODUCTION MODE - Real email sending via Gmail SMTP
  */
 async function sendEmailViaNodemailer(email: string, otp: string): Promise<boolean> {
   try {
-    // Check if running in browser (Nodemailer only works in Node.js)
-    if (typeof window !== 'undefined') {
-      console.error('❌ Nodemailer cannot run in browser. Use serverless function or backend API.');
+    const response = await fetch('http://localhost:3001/api/send-email', {
+      method: 'POST',
+      headers: {
+        'Content-Type': 'application/json',
+      },
+      body: JSON.stringify({
+        to: email,
+        subject: '🔐 Your UniFood Verification Code',
+        html: getOTPEmailTemplate(otp),
+        from: `"${FROM_NAME}" <${FROM_EMAIL}>`
+      })
+    });
+
+    if (!response.ok) {
+      const error = await response.json();
+      console.error('❌ Email server error:', error);
       return false;
     }
 
-    // Dynamic import for Node.js environment only
-    const nodemailer = await import('nodemailer');
-    
-    const transporter = nodemailer.default.createTransport(SMTP_CONFIG);
-
-    const mailOptions = {
-      from: `"${FROM_NAME}" <${FROM_EMAIL}>`,
-      to: email,
-      subject: '🔐 Your UniFood Verification Code',
-      html: getOTPEmailTemplate(otp)
-    };
-
-    await transporter.sendMail(mailOptions);
-    console.log(`✅ OTP sent to ${email} via Nodemailer`);
+    const result = await response.json();
+    console.log(`✅ OTP email sent to ${email} (Message ID: ${result.messageId})`);
     return true;
+    
   } catch (error) {
-    console.error('Nodemailer error:', error);
+    console.error('❌ Failed to connect to email server:', error);
+    console.error('💡 Make sure the email server is running: npm run dev:email');
     return false;
   }
 }
